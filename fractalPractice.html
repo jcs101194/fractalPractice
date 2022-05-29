@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+		</style>
+	</head>
+	<body>
+		<script src="js/three.js"></script>
+		<script>
+			// Random, extremely needed, constants
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+			const renderer = new THREE.WebGLRenderer();
+			renderer.setSize(window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+			const canvas = document.getElementsByTagName("canvas")[0];		// There should only be one canvas
+
+			const geometry = new THREE.BoxGeometry(1, 1, 1);
+			const material = new THREE.MeshPhongMaterial( { color: 0xfcc2ff } );
+			const cube = new THREE.Mesh( geometry, material );
+			const light = new THREE.DirectionalLight(0xfcc2ff, 1);
+			const fog = new THREE.FogExp2('#2b0761', .05);
+			var lights = [];
+			lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
+			lights[0].position.set( 1, 0, 0 );
+			lights[1] = new THREE.DirectionalLight( 0x11e8bb,1);
+			lights[1].position.set( 0.75, 1, 0.5 );
+			lights[2] = new THREE.DirectionalLight( 0x8200C9, 1 );
+			lights[2].position.set( -0.75, -1, 0.5 );
+
+			// Constant strings and numerals will have capital snake casing
+			const DRAG_THRESHOLD = 5000;		// The higher the threshold the less the drag
+
+			light.position.set(0,0,5);
+			light.target.position.set(0, 0, 0);
+
+			scene.add(cube);
+			scene.add(light);
+			scene.add(light.target);
+			//scene.add(lights[0]);
+			scene.add(lights[1]);
+			scene.add(lights[2]);
+			scene.fog = fog;
+			scene.background = new THREE.Color("#97a2ff");
+
+			camera.position.z = 5;
+
+			function animate()
+			{
+				// For some reason, the animation setter is called within the function
+				requestAnimationFrame( animate );
+				renderLoop();				// All renderables and and animations will go in here
+				renderer.render( scene, camera );
+			}
+
+			function renderLoop()
+			{
+				for(var i = 0; i < shapeMatrix.length; i++)
+					for(var k = 0; k < shapeMatrix.length; k++)
+						for(var j = 0; j < shapeMatrix.length; j++)
+						{
+							rotateShape(shapeMatrix[i][j][k]);
+							//rainbowfyShape(shapeMatrix[i][j][k]);
+						}
+			}
+
+			/**
+				Animation  Functions
+			*/
+			function rotateShape(shape)
+			{	
+				shape.rotation.x += 0.01;
+				shape.rotation.y += 0.01;	
+			}
+			function rainbowfyShape(shape)
+			{
+				shape.material.color.r += (shape.material.color.r >= 2) ? -1:0.033;
+				shape.material.color.g += (shape.material.color.g >= 2) ? -1:0.051;
+				shape.material.color.b += (shape.material.color.b >= 2) ? -1:0.011;
+			}
+			
+			/**
+				Control Functions
+			*/
+
+			function enableControls()
+			{
+				window.addEventListener("wheel", zoomCamera);
+				enableDragControls();
+			}
+			function zoomCamera(event)
+			{
+				camera.position.z += event.deltaY/100;
+			}
+			function enableDragControls()
+			{
+				var mouseDown = false;
+				var xi, yi;
+
+				window.addEventListener("mousedown", function(){mouseDown = true; xi = event.x; yi = event.y});
+				window.addEventListener("mouseup",   function(){mouseDown = false;});
+				window.addEventListener("mousemove", function(event)
+				{	
+					if(!mouseDown) return;
+					
+					//console.log("xi="+xi+" yi="+yi+" xf="+event.x+" yf="+event.y);
+					camera.position.x -= (event.x - xi)/DRAG_THRESHOLD;
+					camera.position.y += (event.y - yi)/DRAG_THRESHOLD;
+				});
+			}
+
+
+			/**
+				Background-Scenes
+			*/
+
+			function initializeShapeMatrix(matrixDimension, spaceBetweenShapes = 3)
+			{
+				var currentShape;
+				var shapeArray = new Array(matrixDimension);
+				var leftMostEdge = matrixDimension*spaceBetweenShapes
+				
+				
+				for(var i = 0; i < matrixDimension; i++)
+				{
+					shapeArray[i] = new Array(matrixDimension);
+					for(var j = 0; j < matrixDimension; j++)
+					{
+						shapeArray[i][j] = new Array(matrixDimension);
+						for(var k = 0; k < matrixDimension; k++)
+						{
+							
+							currentShape = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), material);
+							currentShape.position.x = i*3;
+							currentShape.position.y = j*3;
+							currentShape.position.z = k*3 - leftMostEdge;
+
+							shapeArray[i][j][k] = currentShape;
+							scene.add(currentShape);
+						}
+					}
+				}
+
+				return shapeArray;
+			}
+
+
+			// Enable controls and level scene
+			enableControls();
+			var shapeMatrix = initializeShapeMatrix(10);
+
+			animate();
+
+		</script>
+	</body>
+</html>

@@ -32,7 +32,7 @@
 			lights[2].position.set( -0.75, -1, 0.5 );
 
 			// Constant strings and numerals will have capital snake casing
-			const DRAG_THRESHOLD = 5000;		// The higher the threshold the less the drag
+			const DRAG_THRESHOLD = 6;		// The higher the threshold the less the drag
 
 			light.position.set(0,0,5);
 			light.target.position.set(0, 0, 0);
@@ -58,13 +58,7 @@
 
 			function renderLoop()
 			{
-				for(var i = 0; i < shapeMatrix.length; i++)
-					for(var k = 0; k < shapeMatrix.length; k++)
-						for(var j = 0; j < shapeMatrix.length; j++)
-						{
-							rotateShape(shapeMatrix[i][j][k]);
-							//rainbowfyShape(shapeMatrix[i][j][k]);
-						}
+
 			}
 
 			/**
@@ -89,29 +83,49 @@
 			function enableControls()
 			{
 				window.addEventListener("wheel", zoomCamera);
-				enableDragControls();
+				enableDragControls("spherical");
 			}
 			function zoomCamera(event)
 			{
 				camera.position.z += event.deltaY/100;
 			}
-			function enableDragControls()
+			function enableDragControls(cameraType = "regular")
 			{
 				var mouseDown = false;
 				var xi, yi;
+				var ti, dt;
+				var vx, vy;
 
-				window.addEventListener("mousedown", function(){mouseDown = true; xi = event.x; yi = event.y});
+				window.addEventListener("mousedown", function(){mouseDown = true; xi = event.x; yi = event.y; ti = Date.now();});
 				window.addEventListener("mouseup",   function(){mouseDown = false;});
 				window.addEventListener("mousemove", function(event)
 				{	
 					if(!mouseDown) return;
 					
-					//console.log("xi="+xi+" yi="+yi+" xf="+event.x+" yf="+event.y);
-					camera.position.x -= (event.x - xi)/DRAG_THRESHOLD;
-					camera.position.y += (event.y - yi)/DRAG_THRESHOLD;
+					dt = Date.now() - ti;
+
+					if(cameraType == "regular")
+					{
+						vx = (event.x - xi)/(dt * DRAG_THRESHOLD);	
+						vy = (event.y - yi)/(dt * DRAG_THRESHOLD);
+					}
+					else
+					{
+						
+					}
+					
+					console.log(vx+";"+vy);
+
+					if(!Number.isFinite(vx) || !Number.isFinite(vy)) return;
+
+					camera.position.x -= vx;
+					camera.position.y += vy;
+
+					// Reset kinematic vars
+					ti = Date.now();
+					xi = event.x;	yi = event.y;
 				});
 			}
-
 
 			/**
 				Background-Scenes
@@ -122,7 +136,6 @@
 				var currentShape;
 				var shapeArray = new Array(matrixDimension);
 				var leftMostEdge = matrixDimension*spaceBetweenShapes
-				
 				
 				for(var i = 0; i < matrixDimension; i++)
 				{
@@ -147,10 +160,33 @@
 				return shapeArray;
 			}
 
+			function initializeSphereflake(x,y,z,r,desiredLevels, arr)
+			{
+				if(desiredLevels == 0) return arr;
+
+				var geometry = new THREE.SphereGeometry(r,32,16);
+				var currentSphere = new THREE.Mesh(geometry, material);
+				var rFactor = .4, newRadius = rFactor * r ,newCenterDistance = newRadius + r;
+				currentSphere.position.x = x;	
+				currentSphere.position.y = y;
+				currentSphere.position.z = z;
+
+				scene.add(currentSphere);
+
+				arr.push(currentSphere);
+				arr = initializeSphereflake(x+newCenterDistance,y,z,newRadius, desiredLevels-1,arr);
+				arr = initializeSphereflake(x-newCenterDistance,y,z,newRadius, desiredLevels-1,arr);
+				arr = initializeSphereflake(x,y+newCenterDistance,z,newRadius, desiredLevels-1,arr);
+				arr = initializeSphereflake(x,y-newCenterDistance,z,newRadius, desiredLevels-1,arr);
+				arr = initializeSphereflake(x,y,z+newCenterDistance,newRadius, desiredLevels-1,arr);
+				return initializeSphereflake(x,y,z-newCenterDistance,newRadius, desiredLevels-1,arr);
+			}
+
 
 			// Enable controls and level scene
 			enableControls();
-			var shapeMatrix = initializeShapeMatrix(10);
+			//var shapeMatrix = initializeShapeMatrix(10);
+			var sphereFlake = initializeSphereflake(0,0,0,3,5,[]);
 
 			animate();
 

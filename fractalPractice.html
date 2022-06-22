@@ -8,8 +8,19 @@
 		</style>
 	</head>
 	<body>
+		<h3 id="fps" style="display: inline; position: absolute; bottom: 0px; margin-left: 10px; color: white; font-family: Arial, Helvetica, sans-serif;">0.0fps</h3>
+	
+		<script src="palettes.js"></script>
 		<script src="js/three.js"></script>
 		<script>
+
+			// General globals
+			var ti = 0;
+			const FPSElement = document.getElementById("fps");
+			const CAMERA_TYPE = "spherical";
+			const VERBOSE = true;
+			const THEME = new Pastel();
+
 			// Random, extremely needed, constants
 			const scene = new THREE.Scene();
 			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -19,16 +30,16 @@
 			const canvas = document.getElementsByTagName("canvas")[0];		// There should only be one canvas
 
 			const geometry = new THREE.BoxGeometry(1, 1, 1);
-			const material = new THREE.MeshPhongMaterial( { color: 0xfcc2ff } );
+			const material = new THREE.MeshPhongMaterial( { color: THEME.COLOR_2 } );
 			const cube = new THREE.Mesh( geometry, material );
-			const light = new THREE.DirectionalLight(0xfcc2ff, 1);
-			const fog = new THREE.FogExp2('#2b0761', .05);
+			const light = new THREE.DirectionalLight(THEME.COLOR_2, 1);
+			const fog = new THREE.FogExp2(THEME.FOG, .05);
 			var lights = [];
 			lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
 			lights[0].position.set( 1, 0, 0 );
-			lights[1] = new THREE.DirectionalLight( 0x11e8bb,1);
+			lights[1] = new THREE.DirectionalLight( THEME.COLOR_1,1);
 			lights[1].position.set( 0.75, 1, 0.5 );
-			lights[2] = new THREE.DirectionalLight( 0x8200C9, 1 );
+			lights[2] = new THREE.DirectionalLight( THEME.COLOR_3, 1 );
 			lights[2].position.set( -0.75, -1, 0.5 );
 
 			// Constant strings and numerals will have capital snake casing
@@ -44,9 +55,13 @@
 			scene.add(lights[1]);
 			scene.add(lights[2]);
 			scene.fog = fog;
-			scene.background = new THREE.Color("#97a2ff");
+			scene.background = new THREE.Color(THEME.BACKGROUND);
 
 			camera.position.z = 5;
+
+			/*****************************************************************************
+				Utilities
+			******************************************************************************/
 
 			function animate()
 			{
@@ -55,15 +70,40 @@
 				renderLoop();				// All renderables and and animations will go in here
 				renderer.render( scene, camera );
 			}
-
 			function renderLoop()
 			{
 
 			}
+			function step(tf)
+			{
+				var fpsValue = 1000/(tf - ti)
+				ti = tf;
+				FPSElement.innerHTML  = parseFloat(fpsValue).toFixed(1) + "fps";
+				requestAnimationFrame(step);
+			}
+			function enableFPS()
+			{
+				requestAnimationFrame(step);
+			}
+			function getScalarDistanceFromOrigin()
+			{
+				var x2 = Math.pow(camera.position.x, 2);
+				var y2 = Math.pow(camera.position.y, 2);
+				var z2 = Math.pow(camera.position.z, 2);
+				return Math.sqrt(x2+y2+z2);
+			}
+			function isCameraAtOrigin()
+			{
+				return (camera.position.x === 0 && camera.position.y === 0 && camera.position.z === 0);
+			}
+			function log(desiredVar)
+			{
+				if(VERBOSE) console.log(desiredVar);
+			}
 
-			/**
-				Animation  Functions
-			*/
+			/*****************************************************************************
+				Animation Functions
+			******************************************************************************/
 			function rotateShape(shape)
 			{	
 				shape.rotation.x += 0.01;
@@ -75,26 +115,74 @@
 				shape.material.color.g += (shape.material.color.g >= 2) ? -1:0.051;
 				shape.material.color.b += (shape.material.color.b >= 2) ? -1:0.011;
 			}
-			
-			/**
+						
+
+			/*****************************************************************************
 				Control Functions
-			*/
+			*******************************************************************************/
 
 			function enableControls()
 			{
 				window.addEventListener("wheel", zoomCamera);
-				enableDragControls("spherical");
+				enableCameraControls("spherical");
+				enableWASDControls();
 			}
 			function zoomCamera(event)
 			{
-				camera.position.z += event.deltaY/100;
+				var scrollThreshold = 300;
+
+				if(CAMERA_TYPE === "regular") 
+				{
+					camera.position.z += event.deltaY/100;
+				}
+				else
+				{
+					if(isCameraAtOrigin())
+					{
+						camera.position.z += event.deltaY/100;
+						return;
+					}
+
+					camera.position.x += camera.position.x*event.deltaY/scrollThreshold;	
+					camera.position.y += camera.position.y*event.deltaY/scrollThreshold;	
+					camera.position.z += camera.position.z*event.deltaY/scrollThreshold;
+					
+					if(VERBOSE) 
+					{
+						console.log(camera.position);
+						console.log("radius: "+getScalarDistanceFromOrigin());
+					}
+				}
 			}
-			function enableDragControls(cameraType = "regular")
+			function enableWASDControls()
+			{
+				var speed = .5;
+				window.addEventListener("keydown",function(event)
+				{
+					var key = event.key;
+					switch(key)
+					{
+						case "a": camera.position.x -= speed; break;
+						case "s": camera.position.y -= speed; break;
+						case "d": camera.position.x += speed; break;
+						case "w": camera.position.y += speed; break;
+						
+					}
+
+				});
+			}
+			function enableCameraControls()
 			{
 				var mouseDown = false;
 				var xi, yi;
 				var ti, dt;
-				var vx, vy;
+				var vx, vy, vz = 0;
+				var lookVector = new THREE.Vector3(0,0,0);
+				var dx, dy;
+				var x, y, z, r;
+				var theta = Math.atan(camera.position.z/camera.position.x);
+				var phi = Math.atan(camera.position.y/camera.position.z);
+				var dTheta, dPhi;
 
 				window.addEventListener("mousedown", function(){mouseDown = true; xi = event.x; yi = event.y; ti = Date.now();});
 				window.addEventListener("mouseup",   function(){mouseDown = false;});
@@ -104,22 +192,47 @@
 					
 					dt = Date.now() - ti;
 
-					if(cameraType == "regular")
+					if(CAMERA_TYPE == "regular")
 					{
 						vx = (event.x - xi)/(dt * DRAG_THRESHOLD);	
 						vy = (event.y - yi)/(dt * DRAG_THRESHOLD);
+
+						if(!Number.isFinite(vx) || !Number.isFinite(vy)) return;
+
+						camera.position.x -= vx;
+						camera.position.y += vy;
+						camera.position.z += vz;
 					}
 					else
 					{
+
+						r = getScalarDistanceFromOrigin();
+						dx = event.x - xi;
+						dy = event.y - yi;
+
+						dTheta = dx / (r*50);
+						dPhi = dy / (r*50);
+						theta += dTheta;
+						phi += dPhi;
 						
+						x = r*Math.cos(theta);
+						y = r*Math.sin(phi);
+						//z = r*(Math.sin(theta)+Math.cos(phi));
+						z = Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+
+						if(!Number.isFinite(x) || !Number.isFinite(y) ||
+						   !Number.isFinite(z) || !Number.isFinite(r))
+							return;
+
+						camera.position.x = x;
+						camera.position.y = y;
+						camera.position.z = z;
+						camera.lookAt(lookVector);
+
+						log(camera.position);
+						log("radius: "+r);					
 					}
 					
-					console.log(vx+";"+vy);
-
-					if(!Number.isFinite(vx) || !Number.isFinite(vy)) return;
-
-					camera.position.x -= vx;
-					camera.position.y += vy;
 
 					// Reset kinematic vars
 					ti = Date.now();
@@ -127,9 +240,9 @@
 				});
 			}
 
-			/**
-				Background-Scenes
-			*/
+			/*****************************************************************************
+				Fractal Functions
+			******************************************************************************/
 
 			function initializeShapeMatrix(matrixDimension, spaceBetweenShapes = 3)
 			{
@@ -160,7 +273,7 @@
 				return shapeArray;
 			}
 
-			function initializeSphereflake(x,y,z,r,desiredLevels, arr)
+			function initializeSphereflake(x,y,z,r,desiredLevels, arr = [], branch = "center")
 			{
 				if(desiredLevels == 0) return arr;
 
@@ -174,19 +287,24 @@
 				scene.add(currentSphere);
 
 				arr.push(currentSphere);
-				arr = initializeSphereflake(x+newCenterDistance,y,z,newRadius, desiredLevels-1,arr);
-				arr = initializeSphereflake(x-newCenterDistance,y,z,newRadius, desiredLevels-1,arr);
-				arr = initializeSphereflake(x,y+newCenterDistance,z,newRadius, desiredLevels-1,arr);
-				arr = initializeSphereflake(x,y-newCenterDistance,z,newRadius, desiredLevels-1,arr);
-				arr = initializeSphereflake(x,y,z+newCenterDistance,newRadius, desiredLevels-1,arr);
-				return initializeSphereflake(x,y,z-newCenterDistance,newRadius, desiredLevels-1,arr);
+				if(branch != "left") arr = initializeSphereflake(x+newCenterDistance,y,z,newRadius, desiredLevels-1,arr, "right");
+				if(branch != "right") arr = initializeSphereflake(x-newCenterDistance,y,z,newRadius, desiredLevels-1,arr, "left");
+				if(branch != "down") arr = initializeSphereflake(x,y+newCenterDistance,z,newRadius, desiredLevels-1,arr, "up");
+				if(branch != "up") arr = initializeSphereflake(x,y-newCenterDistance,z,newRadius, desiredLevels-1,arr, "down");
+				if(branch != "back") arr = initializeSphereflake(x,y,z+newCenterDistance,newRadius, desiredLevels-1,arr, "front");
+				if(branch != "front") arr = initializeSphereflake(x,y,z-newCenterDistance,newRadius, desiredLevels-1,arr, "back");
+			
+				return arr;
 			}
 
 
 			// Enable controls and level scene
 			enableControls();
+			enableFPS();
+
+			// Random matriox and fractal functions
 			//var shapeMatrix = initializeShapeMatrix(10);
-			var sphereFlake = initializeSphereflake(0,0,0,3,5,[]);
+			var sphereFlake = initializeSphereflake(0,0,0,3,3);
 
 			animate();
 

@@ -17,9 +17,10 @@
 			// General globals
 			var ti = 0;
 			const FPSElement = document.getElementById("fps");
-			const CAMERA_TYPE = "spherical";
+			//const CAMERA_TYPE = "spherical";
+			const CAMERA_TYPE = "regular";
 			const VERBOSE = true;
-			const THEME = new Pastel();
+			const THEME = new Duststorm();
 
 			// Random, extremely needed, constants
 			const scene = new THREE.Scene();
@@ -35,8 +36,9 @@
 			const light = new THREE.DirectionalLight(THEME.COLOR_2, 1);
 			const fog = new THREE.FogExp2(THEME.FOG, .05);
 			var lights = [];
+			
 			lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
-			lights[0].position.set( 1, 0, 0 );
+			lights[0].position.set( 0, 0, 10 );
 			lights[1] = new THREE.DirectionalLight( THEME.COLOR_1,1);
 			lights[1].position.set( 0.75, 1, 0.5 );
 			lights[2] = new THREE.DirectionalLight( THEME.COLOR_3, 1 );
@@ -48,7 +50,7 @@
 			light.position.set(0,0,5);
 			light.target.position.set(0, 0, 0);
 
-			scene.add(cube);
+			//scene.add(cube);			// I have the cube there as a hello world to see if program is working
 			scene.add(light);
 			scene.add(light.target);
 			//scene.add(lights[0]);
@@ -58,6 +60,10 @@
 			scene.background = new THREE.Color(THEME.BACKGROUND);
 
 			camera.position.z = 5;
+			camera.directionVector = new THREE.Vector3(0-camera.position.x,
+								   0-camera.position.y,
+								   0-camera.position.z);
+			camera.perpVector = getPerpVector(camera.directionVector);
 
 			/*****************************************************************************
 				Utilities
@@ -72,7 +78,7 @@
 			}
 			function renderLoop()
 			{
-
+				//for(var i = 0; i < spongeArr.length; i++) rotateShape(spongeArr[i]);
 			}
 			function step(tf)
 			{
@@ -100,6 +106,18 @@
 			{
 				if(VERBOSE) console.log(desiredVar);
 			}
+			function normalizeVector(vector)
+			{
+				var l =  Math.sqrt(Math.pow(vector.x,2)+Math.pow(vector.y,2)+Math.pow(vector.z,2));
+				return new THREE.Vector3(vector.x/l,vector.y/l,vector.z/l);
+			}
+			function getPerpVector(vec)
+			{
+				//Postcondition: z is the same as vec and returning vector must
+				//be normalized
+				var x1 = vec.x, y1 = vec.y, z1 = vec.z;
+				return normalizeVector(new THREE.Vector3(1,(-x1-Math.pow(z1,2))/y1), z1);
+			}
 
 			/*****************************************************************************
 				Animation Functions
@@ -123,36 +141,22 @@
 
 			function enableControls()
 			{
-				window.addEventListener("wheel", zoomCamera);
-				enableCameraControls("spherical");
+				enableZoomCameraControls();
+				enableCameraControls();
 				enableWASDControls();
 			}
-			function zoomCamera(event)
+			function enableZoomCameraControls(event)
 			{
 				var scrollThreshold = 300;
-
-				if(CAMERA_TYPE === "regular") 
+				
+				window.addEventListener("wheel", function(event)
 				{
-					camera.position.z += event.deltaY/100;
-				}
-				else
-				{
-					if(isCameraAtOrigin())
-					{
-						camera.position.z += event.deltaY/100;
-						return;
-					}
-
-					camera.position.x += camera.position.x*event.deltaY/scrollThreshold;	
-					camera.position.y += camera.position.y*event.deltaY/scrollThreshold;	
-					camera.position.z += camera.position.z*event.deltaY/scrollThreshold;
+					camera.position.x -= camera.directionVector.x*event.deltaY/scrollThreshold;	
+					camera.position.y -= camera.directionVector.y*event.deltaY/scrollThreshold;	
+					camera.position.z -= camera.directionVector.z*event.deltaY/scrollThreshold;
 					
-					if(VERBOSE) 
-					{
-						console.log(camera.position);
-						console.log("radius: "+getScalarDistanceFromOrigin());
-					}
-				}
+					log("normalizedVector: "+JSON.stringify(camera.directionVector));
+				});
 			}
 			function enableWASDControls()
 			{
@@ -162,12 +166,31 @@
 					var key = event.key;
 					switch(key)
 					{
-						case "a": camera.position.x -= speed; break;
-						case "s": camera.position.y -= speed; break;
-						case "d": camera.position.x += speed; break;
-						case "w": camera.position.y += speed; break;
+						case "a":
+							camera.position.x -= camera.perpVector.x*speed; 
+							camera.position.y -= camera.perpVector.y*speed; 
+							camera.position.z -= camera.perpVector.z*speed; 
+						break;
+						case "s": 
+							camera.position.x -= camera.directionVector.x*speed;	
+							camera.position.y -= camera.directionVector.y*speed;	
+							camera.position.z -= camera.directionVector.z*speed;
+						break;
+						case "d":
+
+							camera.position.x += camera.perpVector.x*speed; 
+							camera.position.y += camera.perpVector.y*speed; 
+							camera.position.z += camera.perpVector.z*speed; 
+						break;
+						case "w":
+							camera.position.x += camera.directionVector.x*speed;	
+							camera.position.y += camera.directionVector.y*speed;	
+							camera.position.z += camera.directionVector.z*speed;
+						break;
 						
 					}
+
+					console.log(camera.position);
 
 				});
 			}
@@ -177,7 +200,10 @@
 				var xi, yi;
 				var ti, dt;
 				var vx, vy, vz = 0;
-				var lookVector = new THREE.Vector3(0,0,0);
+				var lookVector = new THREE.Vector3(0,0,0);	camera.lookAtVector = lookVector;
+				var directionVector = new THREE.Vector3(camera.lookAtVector.x-camera.position.x,
+							    		camera.lookAtVector.y-camera.position.y,
+							    		camera.lookAtVector.z-camera.position.z);
 				var dx, dy;
 				var x, y, z, r;
 				var theta = Math.atan(camera.position.z/camera.position.x);
@@ -194,14 +220,38 @@
 
 					if(CAMERA_TYPE == "regular")
 					{
-						vx = (event.x - xi)/(dt * DRAG_THRESHOLD);	
-						vy = (event.y - yi)/(dt * DRAG_THRESHOLD);
+						r = 1;
+						dx = event.x - xi;
+						dy = event.y - yi;
 
-						if(!Number.isFinite(vx) || !Number.isFinite(vy)) return;
+						dTheta = dx / (r*1000);
+						dPhi = dy / (r*1000);
+						theta -= dTheta;		// Invert camera's x-speed
+						phi += dPhi;
+						
+						x = r*Math.cos(theta);
+						y = r*Math.sin(phi);
+						z = r*Math.sin(theta);
+						log("pre-z: "+z);
+						if(z > 0) z = Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+						else z = -Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
 
-						camera.position.x -= vx;
-						camera.position.y += vy;
-						camera.position.z += vz;
+						if(!Number.isFinite(x) || !Number.isFinite(y) ||
+						   !Number.isFinite(z) || !Number.isFinite(r))
+							return;
+
+						// Make all important vectors be normalized
+						lookVector.set(x+camera.position.x,y+camera.position.y,z+camera.position.z);
+						//lookVector = normalizeVector(lookVector);
+						directionVector = new THREE.Vector3(camera.lookAtVector.x-camera.position.x,
+										    camera.lookAtVector.y-camera.position.y,
+										    camera.lookAtVector.z-camera.position.z);
+						directionVector = normalizeVector(directionVector);
+
+						camera.lookAt(lookVector);
+						camera.lookAtVector = lookVector;
+						camera.directionVector = directionVector;
+						camera.perpVector = getPerpVector(camera.directionVector);
 					}
 					else
 					{
@@ -218,19 +268,21 @@
 						x = r*Math.cos(theta);
 						y = r*Math.sin(phi);
 						//z = r*(Math.sin(theta)+Math.cos(phi));
-						z = Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+						z = r*Math.sin(theta);
+						log("pre-z: "+z);
+						if(z > 0) z = Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+						else z = -Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
 
 						if(!Number.isFinite(x) || !Number.isFinite(y) ||
 						   !Number.isFinite(z) || !Number.isFinite(r))
 							return;
 
-						camera.position.x = x;
-						camera.position.y = y;
-						camera.position.z = z;
+						camera.position.set(x,y,z);
 						camera.lookAt(lookVector);
 
 						log(camera.position);
-						log("radius: "+r);					
+						log("radius: "+r);
+						log("dx: "+dx);
 					}
 					
 
@@ -297,14 +349,114 @@
 				return arr;
 			}
 
+			function isInM0(i,j,k,n)
+			{
+				// Skewer the xy, xz, yz plane to test if in M_0
+				var isInM0;
+				var l = Math.pow(3,n);
+				var holeLength, outerSquareLength;
+
+				if(i == 9 && j == 9)
+					console.log("hit");
+
+				for(var level = 0; level < n; level++)
+				{
+					holeLength = Math.pow(3, level);
+					outerSquareLength = Math.pow(3, level+1);
+					// Unit holes require different logic
+					if(holeLength === 1)
+					{
+						if((i*holeLength)%outerSquareLength === (holeLength) && (j*holeLength)%outerSquareLength === (holeLength))  
+							return true;
+						if((i*holeLength)%outerSquareLength === (holeLength) && (k*holeLength)%outerSquareLength === (holeLength))  
+							return true;
+						if((j*holeLength)%outerSquareLength === (holeLength) && (k*holeLength)%outerSquareLength === (holeLength))  
+							return true;
+					}
+					else
+					{
+						if((i)%outerSquareLength >= (holeLength) && (i)%outerSquareLength < (2*holeLength) && 
+						   (j)%outerSquareLength >= (holeLength) && (j)%outerSquareLength < (2*holeLength))
+							return true;
+
+						if((i)%outerSquareLength >= (holeLength) && (i)%outerSquareLength < (2*holeLength) && 
+					           (k)%outerSquareLength >= (holeLength) && (k)%outerSquareLength < (2*holeLength))
+							return true;
+
+						if((j)%outerSquareLength >= (holeLength) && (j)%outerSquareLength < (2*holeLength) && 
+						   (k)%outerSquareLength >= (holeLength) && (k)%outerSquareLength < (2*holeLength))
+							return true;
+					}
+
+				}
+
+				return false;
+			}
+
+			function mengerSponge(xi,yi,zi,n)
+			{
+				var geometry = new THREE.BoxGeometry(1, 1, 1);
+				var material = new THREE.MeshPhongMaterial({ color: THEME.COLOR_2 });
+				var currentCube;
+				var l = Math.pow(3,n);
+				var arr = [];
+
+				for(var i = 0, x=xi; i < l; x++, i++)
+				{
+					for(var j = 0, y=yi; j < l; y++, j++)
+					{
+						// The camera is looking down the z-axis, hence the negative z's
+						for(var k = 0, z=zi; k < l; z++, k++)
+						{
+							// Check if current iteration is an empty cube or not
+							if(isInM0(i,j,k,n)) continue;
+
+							currentCube = new THREE.Mesh(geometry, material);
+							currentCube.position.set(x,y,z);
+							
+							console.log(currentCube.position);
+							scene.add(currentCube);
+							arr.push(currentCube);
+						}
+					}
+				}
+
+				return arr;
+			}
+
+
+
+			/*****************************************************************************
+				Concepts
+			******************************************************************************/
+
+			function sphereScene()
+			{
+				var sphereFlake = initializeSphereflake(0,0,0,3,3);
+				var flakeMatrix = [];
+				for(var i = 0; i < 2; i++)
+				{
+					flakeMatrix.push(initializeSphereflake(20,5,-i*10,5,5));
+					flakeMatrix.push(initializeSphereflake(-20,5,-i*10,5,5));
+				}
+			}
+
+			function spongeScene()
+			{
+				var spongeArr = mengerSponge(-10,-10,-10,3);
+				//var sphereFlake = initializeSphereflake(0,0,0,3,4);
+			}
+		
+		
 
 			// Enable controls and level scene
 			enableControls();
 			enableFPS();
 
-			// Random matriox and fractal functions
+			// Random matrix and fractal functions
 			//var shapeMatrix = initializeShapeMatrix(10);
-			var sphereFlake = initializeSphereflake(0,0,0,3,3);
+			//sphereScene();
+			spongeScene();
 
 			animate();
 

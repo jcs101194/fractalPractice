@@ -5,11 +5,54 @@
 		<title>My first three.js app</title>
 		<style>
 			body { margin: 0; }
+			p {display: none;}
 		</style>
 	</head>
 	<body>
 		<h3 id="fps" style="display: inline; position: absolute; bottom: 0px; margin-left: 10px; color: white; font-family: Arial, Helvetica, sans-serif;">0.0fps</h3>
-	
+		<script id="vertexShader" type="x-shader/x-vertex">
+
+			varying vec3 vUv; 
+
+			void main() 
+			{
+				vUv = position;
+				vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+			        gl_Position = projectionMatrix * modelViewPosition; 
+			}
+
+
+		</script>
+		<script id="fragShader" type="x-shader/x-vertex">
+
+			uniform vec3 u_colorA; 
+			uniform vec3 u_colorB; 
+			uniform float u_time;
+			uniform vec3 u_fogColor;
+			uniform float u_fogNear;
+			uniform float u_fogFar;
+			varying vec3 vUv;
+
+			void main()
+			{
+				// Fog scalars
+				float depth = gl_FragCoord.z / gl_FragCoord.w;
+				float fogFactor = smoothstep(u_fogNear, u_fogFar, depth);		// Smooth out values
+				
+				gl_FragColor = vec4(mix(u_colorA.rgb, u_fogColor, fogFactor), 1);	// Mix does more linear interpolation
+				
+				/*
+				// Debugging Block
+
+				if (gl_FragColor == vec4(0,0,0,1)) gl_FragColor = vec4(1,0,0,1);
+				else if (gl_FragColor.a == 0.0) gl_FragColor = vec4(0,1,0,1);
+				else gl_FragColor = vec4(0,0,1,1);
+				*/
+			}
+
+		</script>
+
+
 		<script src="palettes.js"></script>
 		<script src="js/three.js"></script>
 		<script>
@@ -20,18 +63,19 @@
 			//const CAMERA_TYPE = "spherical";
 			const CAMERA_TYPE = "regular";
 			const VERBOSE = true;
-			const THEME = new Duststorm();
+			const THEME = new Pastel();
 
 			// Random, extremely needed, constants
 			const scene = new THREE.Scene();
 			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-			const renderer = new THREE.WebGLRenderer();
-			renderer.setSize(window.innerWidth, window.innerHeight );
+			const renderer = new THREE.WebGLRenderer();	renderer.setSize(window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
 			const canvas = document.getElementsByTagName("canvas")[0];		// There should only be one canvas
+			var gl = canvas.getContext('webgl2');
 
 			const geometry = new THREE.BoxGeometry(1, 1, 1);
 			const material = new THREE.MeshPhongMaterial( { color: THEME.COLOR_2 } );
+			var shaderMaterial;
 			const cube = new THREE.Mesh( geometry, material );
 			const light = new THREE.DirectionalLight(THEME.COLOR_2, 1);
 			const fog = new THREE.FogExp2(THEME.FOG, .05);
@@ -43,6 +87,8 @@
 			lights[1].position.set( 0.75, 1, 0.5 );
 			lights[2] = new THREE.DirectionalLight( THEME.COLOR_3, 1 );
 			lights[2].position.set( -0.75, -1, 0.5 );
+			//lights[3] = new THREE.AmbientLight(0x404040);
+			//lights[3].position.set( -0.75, -1, 0.5 );
 
 			// Constant strings and numerals will have capital snake casing
 			const DRAG_THRESHOLD = 6;		// The higher the threshold the less the drag
@@ -50,12 +96,14 @@
 			light.position.set(0,0,5);
 			light.target.position.set(0, 0, 0);
 
+			// Scene code
 			//scene.add(cube);			// I have the cube there as a hello world to see if program is working
 			scene.add(light);
 			scene.add(light.target);
 			//scene.add(lights[0]);
 			scene.add(lights[1]);
 			scene.add(lights[2]);
+			//scene.add(lights[3]);
 			scene.fog = fog;
 			scene.background = new THREE.Color(THEME.BACKGROUND);
 
@@ -64,6 +112,10 @@
 								   0-camera.position.y,
 								   0-camera.position.z);
 			camera.perpVector = getPerpVector(camera.directionVector);
+
+			// GLSL vars
+			var u_time;
+			var program;
 
 			/*****************************************************************************
 				Utilities
@@ -79,6 +131,9 @@
 			function renderLoop()
 			{
 				//for(var i = 0; i < spongeArr.length; i++) rotateShape(spongeArr[i]);
+				//updateShaderTimeUniform();
+				//shaderMaterial.uniforms.u_time.value = (new Date().getMilliseconds())/10;
+				shaderMaterial.uniforms.u_time.value = 156;
 			}
 			function step(tf)
 			{
@@ -120,6 +175,51 @@
 			}
 
 			/*****************************************************************************
+				WebGL Functions
+			******************************************************************************/
+			function createProgram(vertexShader, fragmentShader)
+			{
+				var program = gl.createProgram();
+
+				gl.attachShader(program, vertexShader);
+				gl.attachShader(program, fragmentShader);
+				gl.linkProgram(program);
+
+				return program;
+			}
+			function createShader(type, src)
+			{
+				var shader = gl.createShader(type);
+
+				gl.shaderSource(shader, src);
+				gl.compileShader(shader);
+
+				return shader;
+			}
+			function initializeShaders()
+			{
+				let uniforms = 
+				{
+				        u_colorA:    	{type: "vec3", value: new THREE.Color(THEME.COLOR_1)},
+				        u_colorB:    	{type: "vec3", value: new THREE.Color(0x74ebd5)},
+					u_time:		{type: "float",value: new Date().getSeconds()},
+					u_fogColor:  	{type: "vec3", value: scene.fog.color },
+					u_fogNear:   	{type: "float", value: 1.0 },
+					u_fogFar:    	{type: "float", value: 30.0 }
+				};
+				shaderMaterial = new THREE.ShaderMaterial
+				({	
+					uniforms: uniforms,
+					vertexShader: document.getElementById('vertexShader').textContent,
+					fragmentShader: document.getElementById('fragShader').textContent,
+					blending: THREE.NormalBlending,
+					transparent: true
+				});
+
+				shaderMaterial.colorWrite = true;
+			}
+				
+			/*****************************************************************************
 				Animation Functions
 			******************************************************************************/
 			function rotateShape(shape)
@@ -133,7 +233,7 @@
 				shape.material.color.g += (shape.material.color.g >= 2) ? -1:0.051;
 				shape.material.color.b += (shape.material.color.b >= 2) ? -1:0.011;
 			}
-						
+					
 
 			/*****************************************************************************
 				Control Functions
@@ -147,7 +247,7 @@
 			}
 			function enableZoomCameraControls(event)
 			{
-				var scrollThreshold = 300;
+				var scrollThreshold = 100;
 				
 				window.addEventListener("wheel", function(event)
 				{
@@ -411,7 +511,8 @@
 							// Check if current iteration is an empty cube or not
 							if(isInM0(i,j,k,n)) continue;
 
-							currentCube = new THREE.Mesh(geometry, material);
+							//currentCube = new THREE.Mesh(geometry, material);
+							currentCube = new THREE.Mesh(geometry, shaderMaterial);
 							currentCube.position.set(x,y,z);
 							
 							console.log(currentCube.position);
@@ -449,13 +550,14 @@
 		
 		
 
-			// Enable controls and level scene
+			// Enable controls and scene stuff
 			enableControls();
 			enableFPS();
+			initializeShaders();
 
 			// Random matrix and fractal functions
 			//var shapeMatrix = initializeShapeMatrix(10);
-			//sphereScene();
+			sphereScene();
 			spongeScene();
 
 			animate();

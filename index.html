@@ -107,7 +107,7 @@
 			scene.fog = fog;
 			scene.background = new THREE.Color(THEME.BACKGROUND);
 
-			camera.position.z = 5;
+			camera.position.z = -1;
 			camera.directionVector = new THREE.Vector3(0-camera.position.x,
 								   0-camera.position.y,
 								   0-camera.position.z);
@@ -332,9 +332,17 @@
 						x = r*Math.cos(theta);
 						y = r*Math.sin(phi);
 						z = r*Math.sin(theta);
-						log("pre-z: "+z);
-						if(z > 0) z = Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
-						else z = -Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+						//log("pre-z: "+z);
+
+						console.log(camera.lookAtVector);
+						if(z > 0) 
+						{
+							z = Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+						}
+						else 
+						{
+							z = -Math.sqrt(Math.pow(r,2)-Math.pow(x,2)-Math.pow(y,2));
+						}
 
 						if(!Number.isFinite(x) || !Number.isFinite(y) ||
 						   !Number.isFinite(z) || !Number.isFinite(r))
@@ -342,6 +350,9 @@
 
 						// Make all important vectors be normalized
 						lookVector.set(x+camera.position.x,y+camera.position.y,z+camera.position.z);
+						log("lookVector: <"+lookVector.x.toFixed(2)+", "+lookVector.y.toFixed(2)+", "+lookVector.z.toFixed(2)+">");
+						log("dx: "+dx);
+						log("dy: "+dy);
 						//lookVector = normalizeVector(lookVector);
 						directionVector = new THREE.Vector3(camera.lookAtVector.x-camera.position.x,
 										    camera.lookAtVector.y-camera.position.y,
@@ -505,7 +516,7 @@
 				{
 					for(var j = 0, y=yi; j < l; y++, j++)
 					{
-						// The camera is looking down the z-axis, hence the negative z's
+						// The camera is looking down the z-axis, hence the negative zs
 						for(var k = 0, z=zi; k < l; z++, k++)
 						{
 							// Check if current iteration is an empty cube or not
@@ -533,13 +544,8 @@
 
 			function sphereScene()
 			{
-				var sphereFlake = initializeSphereflake(0,0,0,3,3);
 				var flakeMatrix = [];
-				for(var i = 0; i < 2; i++)
-				{
-					flakeMatrix.push(initializeSphereflake(20,5,-i*10,5,5));
-					flakeMatrix.push(initializeSphereflake(-20,5,-i*10,5,5));
-				}
+				flakeMatrix.push(initializeSphereflake(0,7,-30,5,5));
 			}
 
 			function spongeScene()

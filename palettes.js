@@ -2,9 +2,11 @@ class Pastel
 {
 	constructor()
 	{
-		this.BACKGROUND = 0x97a2ff;
+		// In this case BACKGROUND is the sky color
+		this.BACKGROUND = 0x03cffc;
 
 		this.FOG = 0x2b0761;
+		//this.FOG = 0xffffff;
 
 		this.COLOR_1 = 0x11e8bb;
 		this.COLOR_2 = 0xfcc2ff;

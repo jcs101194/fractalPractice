@@ -1,0 +1,92 @@
+<html>
+<script id="vertexShader" type="x-shader/x-vertex">
+
+varying vec3 vUv;
+out vec3 FragPos;
+out vec3 Normal;
+
+void main()
+{
+	vUv = position;
+	vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+	gl_Position = projectionMatrix * modelViewPosition;
+	FragPos = vec3(modelViewMatrix * vec4(position, 1.0));													
+}
+
+</script>
+<script id="fragShader" type="x-shader/x-vertex">
+
+in vec3 FragPos;
+in vec3 Normal;
+
+uniform vec3 u_colorA;
+uniform vec3 u_colorB;
+uniform float u_time;
+uniform vec3 u_fogColor;
+uniform float u_fogNear;
+uniform float u_fogFar;
+uniform vec3 u_viewDirection;
+uniform vec3 u_lightDirection;
+uniform vec3 u_normVector;
+varying vec3 vUv;
+
+void main()
+{
+	// Fog scalars
+	float depth = gl_FragCoord.z / gl_FragCoord.w;
+	float fogFactor = smoothstep(u_fogNear, u_fogFar, depth);               // Smooth out values
+
+	// Specular variables
+	float specularStrength = 0.5f;
+	vec3 normVector = vec3(0.0, 0.0, 1.0);
+	vec3 reflectDirection = reflect(-u_lightDirection, normVector);
+	//float spec = pow(max(dot(u_viewDirection, reflectDirection), 0.0), 64.0);     // Won't work if scalar comes ou
+	float spec = pow(abs(dot(u_viewDirection, reflectDirection)), 64.0);
+
+
+	if(spec == 0.0)
+	{
+		gl_FragColor = vec4(0.0,1.0,0.0, 1.0);
+		return;
+	}
+
+	vec3 specular = specularStrength * spec * vec3(0,0,1);
+
+	gl_FragColor = vec4(mix(u_colorA.rgb, u_fogColor, fogFactor), 1.0);     // Mix does more linear interpolation
+	//gl_FragColor = gl_FragColor + vec4(specular, 1.0);
+	//gl_FragColor = vec4(specular, 1.0);
+
+
+	/*
+	// Debugging Block
+	if (gl_FragColor == vec4(0,0,0,1)) gl_FragColor = vec4(1,0,0,1);
+	else if (gl_FragColor.a == 0.0) gl_FragColor = vec4(0,1,0,1);
+	else gl_FragColor = vec4(0,0,1,1);
+	*/
+}
+
+</script>
+<script id="skyBoxShader" type="x-shader/x-vertex">
+
+uniform vec3 u_atmosphereColor;
+uniform vec3 u_dustColor;
+
+void main()
+{
+	float winWidth = 1200.0, winHeight = 1000.0;
+	float rSun = 20.0;
+	
+	// Get distance from center
+	float dFragCenter = distance(vec3(winWidth/2.0, winHeight/2.0, 0.0), gl_FragCoord.xyz);
+	float dCenterMax = distance(vec3(winWidth/2.0, winHeight/2.0, 0.0), vec3(0.0, 0.0, 0.0));
+	float dFragRatio = dFragCenter/dCenterMax;
+
+	// Now for the final calculation
+	vec3 colorDec = dFragRatio*vec3(1.0-u_atmosphereColor.x, 1.0-u_atmosphereColor.y, 1.0-u_atmosphereColor.z);
+
+	// Minty-dark atmosphere, blech
+	gl_FragColor = vec4(vec3(1.0-colorDec.x, 1.0-colorDec.y, 1.0-colorDec.z), 1.0);
+}
+
+</script>
+</html>

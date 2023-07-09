@@ -70,21 +70,35 @@ void main()
 
 uniform vec3 u_atmosphereColor;
 uniform vec3 u_dustColor;
+uniform vec3 u_cameraTarget;		// aka camera center
+uniform vec3 u_pSun;
+uniform float u_skyBoxRadius;		// Probably not needed
+uniform float u_totalAngle;		// Angle between pSun and look vector
 
 void main()
 {
+	// Viewport dims
 	float winWidth = 1200.0, winHeight = 1000.0;
+	vec3 viewPortCenter = vec3(winWidth/2.0, winHeight/2.0, 0.0);
+
+	// Sun properties
 	float rSun = 20.0;
-	
+
+	// Offset variables
+	float dArc = u_totalAngle * u_skyBoxRadius;
+	vec3 dSunToCameraTarget = normalize(u_pSun - u_cameraTarget);
+	vec3 absoluteCoord = dSunToCameraTarget + gl_FragCoord.xyz;
+//gl_FragColor = vec4(dSunToCameraTarget, 1.0); return;
+
 	// Get distance from center
-	float dFragCenter = distance(vec3(winWidth/2.0, winHeight/2.0, 0.0), gl_FragCoord.xyz);
-	float dCenterMax = distance(vec3(winWidth/2.0, winHeight/2.0, 0.0), vec3(0.0, 0.0, 0.0));
-	float dFragRatio = dFragCenter/dCenterMax;
+	float dCenterFrag = distance(viewPortCenter, absoluteCoord);
+	float dCenterMax = distance(viewPortCenter, vec3(0.0, 0.0, 0.0));
+	float dFragRatio = dCenterFrag/dCenterMax;
 
 	// Now for the final calculation
-	vec3 colorDec = dFragRatio*vec3(1.0-u_atmosphereColor.x, 1.0-u_atmosphereColor.y, 1.0-u_atmosphereColor.z);
+	vec3 colorDelta = vec3(1.0-u_atmosphereColor.x, 1.0-u_atmosphereColor.y, 1.0-u_atmosphereColor.z);
+	vec3 colorDec = dFragRatio*colorDelta;
 
-	// Minty-dark atmosphere, blech
 	gl_FragColor = vec4(vec3(1.0-colorDec.x, 1.0-colorDec.y, 1.0-colorDec.z), 1.0);
 }
 

@@ -39,6 +39,7 @@
 			const geometry = new THREE.BoxGeometry(1, 1, 1);
 			const material = new THREE.MeshPhongMaterial( { color: THEME.COLOR_2 } );
 			var shaderMaterial;
+			var skyBoxShader;
 			const cube = new THREE.Mesh( geometry, material );
 			const light = new THREE.DirectionalLight(THEME.COLOR_3, 1);
 			const fog = new THREE.FogExp2(THEME.FOG, .05);
@@ -105,6 +106,10 @@
 				shaderMaterial.uniforms.u_time.value += .1;
 				shaderMaterial.uniforms.u_viewDirection.value = camera.directionVector;
 				shaderMaterial.uniforms.u_lightDirection.value = light.directionVector;
+
+				// Update skybox
+				console.log(camera.lookAtVector);
+				skyBoxShader.uniforms.u_cameraTarget.value = camera.lookAtVector;
 			}
 			function step(tf)
 			{
@@ -136,6 +141,10 @@
 			{
 				var l =  Math.sqrt(Math.pow(vector.x,2)+Math.pow(vector.y,2)+Math.pow(vector.z,2));
 				return new THREE.Vector3(vector.x/l,vector.y/l,vector.z/l);
+			}
+			function angle(v1, v2)
+			{
+				return Math.acos(v1.dot(v2)/(v1.length()*v2.length()));
 			}
 			function getPerpVector(vec)
 			{
@@ -173,11 +182,18 @@
 				// It's just a plane in the horizon
 				var boxDim = 200;
 				var boxGeometry = new THREE.BoxGeometry(boxDim,boxDim,boxDim);
-				var skyBoxShader  = new THREE.ShaderMaterial
+				var pSun = new THREE.Vector3(0.0, 0.0, -boxDim/2.0);
+				var totalAngle = angle(camera.lookAtVector, pSun);
+				skyBoxShader  = new THREE.ShaderMaterial
 				({
 					uniforms: {
 						u_atmosphereColor:	{type: "vec3", value: new THREE.Color(THEME.BACKGROUND)},
-						u_dustColor:		{type: "vec3", value: new THREE.Color(THEME.COLOR_1)}
+						u_dustColor:		{type: "vec3", value: new THREE.Color(THEME.COLOR_1)},
+						u_cameraTarget:		{type: "vec3", value: camera.lookAtVector},
+						u_pSun:			{type: "vec3", value: pSun},
+						u_skyBoxRadius:		{type: "float", value: boxDim/2.0},
+						u_totalAngle:		{type: "float", value: totalAngle},
+
 					},
 					fragmentShader: document.getElementById('skyBoxShader').textContent,
 					blending: THREE.NormalBlending,

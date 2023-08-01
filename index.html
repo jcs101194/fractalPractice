@@ -66,6 +66,7 @@
 				light.target.position.z-light.position.z
 			);
 
+
 			// Scene code
 			//scene.add(cube);			// I have the cube there as a hello world to see if program is working
 			scene.add(light);
@@ -74,9 +75,15 @@
 			scene.add(lights[1]);
 			scene.add(lights[2]);
 			//scene.add(lights[3]);
+
+			// Dimensions for the skybox
+			var boxDim = 200;
+			var pSun = new THREE.Vector3(0.0, 0.0, -boxDim/2.0);
+
 			scene.fog = fog;
 			//scene.background = new THREE.Color(THEME.BACKGROUND);
 
+			// Camera vars
 			camera.position.z = -1;
 			camera.directionVector = new THREE.Vector3(0-camera.position.x,
 								   0-camera.position.y,
@@ -100,6 +107,8 @@
 			}
 			function renderLoop()
 			{
+				var totalAngle = angle(camera.directionVector, pSun)
+
 				//for(var i = 0; i < spongeArr.length; i++) rotateShape(spongeArr[i]);
 				//updateShaderTimeUniform();
 				//shaderMaterial.uniforms.u_time.value = (new Date().getMilliseconds())/10;
@@ -107,9 +116,18 @@
 				shaderMaterial.uniforms.u_viewDirection.value = camera.directionVector;
 				shaderMaterial.uniforms.u_lightDirection.value = light.directionVector;
 
+				// Direciton of angle is important to keep the sun shader in place...
+				if(camera.directionVector.x < 0)
+				{
+					totalAngle = -totalAngle;
+				}
+
 				// Update skybox
-				console.log(camera.lookAtVector);
 				skyBoxShader.uniforms.u_cameraTarget.value = camera.lookAtVector;
+				skyBoxShader.uniforms.u_viewDirection.value = camera.directionVector;
+				skyBoxShader.uniforms.u_totalAngle.value = totalAngle;
+				//console.log('totalAngle: '+skyBoxShader.uniforms.u_totalAngle.value);
+				//console.log(skyBoxShader.uniforms.u_viewDirection.value);
 			}
 			function step(tf)
 			{
@@ -137,6 +155,10 @@
 			{
 				if(VERBOSE) console.log(desiredVar);
 			}
+
+			/*****************************************************************************
+				Vector Functions
+			******************************************************************************/
 			function normalizeVector(vector)
 			{
 				var l =  Math.sqrt(Math.pow(vector.x,2)+Math.pow(vector.y,2)+Math.pow(vector.z,2));
@@ -144,6 +166,8 @@
 			}
 			function angle(v1, v2)
 			{
+				console.log(v1);
+				console.log(v2);
 				return Math.acos(v1.dot(v2)/(v1.length()*v2.length()));
 			}
 			function getPerpVector(vec)
@@ -180,19 +204,21 @@
 			function initializeSkyBox()
 			{
 				// It's just a plane in the horizon
-				var boxDim = 200;
 				var boxGeometry = new THREE.BoxGeometry(boxDim,boxDim,boxDim);
-				var pSun = new THREE.Vector3(0.0, 0.0, -boxDim/2.0);
-				var totalAngle = angle(camera.lookAtVector, pSun);
+				var totalAngle = angle(camera.directionVector, pSun);
+
 				skyBoxShader  = new THREE.ShaderMaterial
 				({
 					uniforms: {
-						u_atmosphereColor:	{type: "vec3", value: new THREE.Color(THEME.BACKGROUND)},
+						u_skyColor:		{type: "vec3", value: new THREE.Color(THEME.BACKGROUND)},
 						u_dustColor:		{type: "vec3", value: new THREE.Color(THEME.COLOR_1)},
 						u_cameraTarget:		{type: "vec3", value: camera.lookAtVector},
+						u_viewDirection:	{type: "vec3", value: camera.directionVector},
 						u_pSun:			{type: "vec3", value: pSun},
 						u_skyBoxRadius:		{type: "float", value: boxDim/2.0},
 						u_totalAngle:		{type: "float", value: totalAngle},
+						u_winWidth:		{type: "float", value: window.innerWidth},
+						u_winHeight:		{type: "float", value: window.innerHeight},
 
 					},
 					fragmentShader: document.getElementById('skyBoxShader').textContent,
@@ -314,7 +340,7 @@
 				var xi, yi;
 				var ti, dt;
 				var vx, vy, vz = 0;
-				var lookVector = new THREE.Vector3(0,0,0);	camera.lookAtVector = lookVector;
+				var lookVector = new THREE.Vector3(0,0,-10);	camera.lookAtVector = lookVector;
 				var directionVector = new THREE.Vector3(camera.lookAtVector.x-camera.position.x,
 							    		camera.lookAtVector.y-camera.position.y,
 							    		camera.lookAtVector.z-camera.position.z);

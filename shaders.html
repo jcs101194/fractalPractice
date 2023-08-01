@@ -68,38 +68,82 @@ void main()
 </script>
 <script id="skyBoxShader" type="x-shader/x-vertex">
 
-uniform vec3 u_atmosphereColor;
+uniform vec3 u_skyColor;
 uniform vec3 u_dustColor;
-uniform vec3 u_cameraTarget;		// aka camera center
+uniform vec3 u_cameraTarget;		// Camera target doesn't always point at sphere surface, probably don't use it
 uniform vec3 u_pSun;
+uniform vec3 u_viewDirection;
 uniform float u_skyBoxRadius;		// Probably not needed
 uniform float u_totalAngle;		// Angle between pSun and look vector
+uniform float u_winWidth;
+uniform float u_winHeight;
+
+
+/**
+	x(t) > 1 will result in a white sky
+*/
+vec3 skyFunction(float x)
+{
+	if (x < 0.0)
+	{
+		return u_skyColor;
+	}
+
+	vec3 white = vec3(1.0, 1.0, 1.0);
+	vec3 skyColorNegative = white - u_skyColor;
+
+	return skyColorNegative*x + u_skyColor;
+}
+
+vec3 rationalFunction(float dArc)
+{
+	return vec3(1.0/dArc+u_skyColor.x,1.0/dArc+u_skyColor.y,1.0/dArc+u_skyColor.z);
+}
+
+vec3 cubeRootFunction(float dArc)
+{
+	float exp = .333;
+	float x_t =  -(1.0/2.5)*sqrt(dArc)+3.0;
+
+	return skyFunction(x_t);
+}
+
+vec3 getAbsoluteCoordinates(vec3 coord)
+{
+	vec3 viewPortCenter = vec3(u_winWidth/2.0, u_winHeight/2.0, 0.0);
+	vec3 dSunToCamera = u_viewDirection - u_pSun;
+	vec3 absoluteCoord = vec3(coord.x-viewPortCenter.x, coord.y-viewPortCenter.y, coord.z);
+	float mult = 1200.0;	// I think there's a magnitude mismatch when I wrote this shader,
+				// hence the need for the multiplier
+
+	absoluteCoord = vec3(absoluteCoord.x+dSunToCamera.x*mult, absoluteCoord.y+dSunToCamera.y*mult, absoluteCoord.z);
+
+	return absoluteCoord;
+}
 
 void main()
 {
-	// Viewport dims
-	float winWidth = 1200.0, winHeight = 1000.0;
-	vec3 viewPortCenter = vec3(winWidth/2.0, winHeight/2.0, 0.0);
-
-	// Sun properties
-	float rSun = 20.0;
-
 	// Offset variables
-	float dArc = u_totalAngle * u_skyBoxRadius;
-	vec3 dSunToCameraTarget = normalize(u_pSun - u_cameraTarget);
-	vec3 absoluteCoord = dSunToCameraTarget + gl_FragCoord.xyz;
-//gl_FragColor = vec4(dSunToCameraTarget, 1.0); return;
 
-	// Get distance from center
-	float dCenterFrag = distance(viewPortCenter, absoluteCoord);
-	float dCenterMax = distance(viewPortCenter, vec3(0.0, 0.0, 0.0));
-	float dFragRatio = dCenterFrag/dCenterMax;
+	/**
+		-The entire misunderstanding is that the parameterized function, x(t), needs to
 
-	// Now for the final calculation
-	vec3 colorDelta = vec3(1.0-u_atmosphereColor.x, 1.0-u_atmosphereColor.y, 1.0-u_atmosphereColor.z);
-	vec3 colorDec = dFragRatio*colorDelta;
+			D: [0, pi*skySphereRadius]	// i.e [0, 200.0/2.0*pi = 314]
+			R: [skyColor, white]
 
-	gl_FragColor = vec4(vec3(1.0-colorDec.x, 1.0-colorDec.y, 1.0-colorDec.z), 1.0);
+			t = arcTotal			// NOT ANGLE, a linear arc
+			Where x(0) = 1 white AND	// i.e
+			x(314) = 0  skyColor
+
+		that is,
+
+		gl_FragColor = skyColor + skyNegative*x(t) = f(x(t))
+	**/
+
+	vec3 absoluteFragCoord = getAbsoluteCoordinates(gl_FragCoord.xyz);
+	float absoluteDistance = distance(u_pSun, absoluteFragCoord.xyz);
+
+	gl_FragColor = vec4(cubeRootFunction(absoluteDistance/7.0), 1.0);
 }
 
 </script>

@@ -19,7 +19,10 @@ In Progress !!! -Fix the atmposphere
 !!! -Add mouse controllers
 
 
+# Camera
+!!! -camera.lookAtVector doesn't return coordinates relative to skysphere	# The sphere within the skybox
+
+
 # Cleanup/Readability
-Done !!! -Move shaders to new files		# ~4 second increase in load time :(
 
 

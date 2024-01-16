@@ -3,10 +3,11 @@
 
 varying vec3 vUv;
 out vec3 FragPos;
-out vec3 Normal;
+out vec3 vNormal;
 
 void main()
 {
+	vNormal = normal;
 	vUv = position;
 	vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
 	gl_Position = projectionMatrix * modelViewPosition;
@@ -17,17 +18,16 @@ void main()
 <script id="fragShader" type="x-shader/x-vertex">
 
 in vec3 FragPos;
-in vec3 Normal;
+in vec3 vNormal;
 
 uniform vec3 u_colorA;
 uniform vec3 u_colorB;
-uniform float u_time;
 uniform vec3 u_fogColor;
+uniform float u_time;
 uniform float u_fogNear;
 uniform float u_fogFar;
 uniform vec3 u_viewDirection;
 uniform vec3 u_lightDirection;
-uniform vec3 u_normVector;
 varying vec3 vUv;
 
 void main()
@@ -36,14 +36,14 @@ void main()
 	float depth = gl_FragCoord.z / gl_FragCoord.w;
 	float fogFactor = smoothstep(u_fogNear, u_fogFar, depth);               // Smooth out values
 
+	// Diffuse vars
+	float diffuseStrength = dot(vNormal, u_lightDirection);
+
 	// Specular variables
 	float specularStrength = 0.5f;
-	vec3 normVector = vec3(0.0, 0.0, 1.0);
-	vec3 reflectDirection = reflect(-u_lightDirection, normVector);
+	vec3 reflectDirection = reflect(-u_lightDirection, vNormal);
 	//float spec = pow(max(dot(u_viewDirection, reflectDirection), 0.0), 64.0);     // Won't work if scalar comes ou
 	float spec = pow(abs(dot(u_viewDirection, reflectDirection)), 64.0);
-
-
 	if(spec == 0.0)
 	{
 		gl_FragColor = vec4(0.0,1.0,0.0, 1.0);
@@ -52,10 +52,11 @@ void main()
 
 	vec3 specular = specularStrength * spec * vec3(0,0,1);
 
-	gl_FragColor = vec4(mix(u_colorA.rgb, u_fogColor, fogFactor), 1.0);     // Mix does more linear interpolation
+	gl_FragColor = vec4(mix(u_colorA.rgb, u_colorB.rgb, diffuseStrength), 1.0);     // Mix does more linear interpolation
 	//gl_FragColor = gl_FragColor + vec4(specular, 1.0);
 	//gl_FragColor = vec4(specular, 1.0);
-
+	gl_FragColor = vec4(mix(gl_FragColor.rgb, u_fogColor, fogFactor), 1.0);     // Mix does more linear interpolation
+	gl_FragColor = vec4(gl_FragColor.xyz * 0.5f, 1.0);
 
 	/*
 	// Debugging Block

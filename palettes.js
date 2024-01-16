@@ -22,8 +22,22 @@ class Duststorm
 
 		this.FOG = 0x9E7154;
 
-		this.COLOR_1 = 0x733A26;
-		this.COLOR_2 = 0xd4781c;
-		this.COLOR_3 = 0x8200C9;
+		this.COLOR_1 = 0x8200C9;	// Purple
+		this.COLOR_3 = 0x733A26;	// Dusty Orange
+		this.COLOR_2 = 0xd4781c;	// Light Orange
+	}
+}
+
+class Galaxy
+{
+	constructor()
+	{
+		this.BACKGROUND = 0xAD836A;
+
+		this.FOG = 0x9E7154;
+
+		this.COLOR_1 = 0x8200C9;	// Purple
+		this.COLOR_3 = 0x733A26;	// Dusty Orange
+		this.COLOR_2 = 0xd4781c;	// Light Orange
 	}
 }

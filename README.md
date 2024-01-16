@@ -5,8 +5,6 @@
 
 # Scene (level) changes
 Paused !!!-Apply moving Sierpinski carpets to a 3d model (preferably a fractal)
-!!! -Add an Apolloninian fractal (or a klenian column of some kind)
-In Progress !!! -Fix the atmposphere
 !!! -Apply serpinski carpet to a block
 !!! -Add Klenian columns
 
@@ -16,13 +14,20 @@ In Progress !!! -Fix the atmposphere
 
 # Controls
 !!! -Add mobile phone controllers
-!!! -Add mouse controllers
 
 
 # Camera
-!!! -camera.lookAtVector doesn't return coordinates relative to skysphere	# The sphere within the skybox
 
 
 # Cleanup/Readability
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Done
+
+
+Done Fix material shaders
+Done !!! -Add mouse controllers
 
 

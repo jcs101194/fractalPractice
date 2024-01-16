@@ -25,8 +25,9 @@
 			const FPSElement = document.getElementById("fps");
 			//const CAMERA_TYPE = "spherical";
 			const CAMERA_TYPE = "regular";
-			const VERBOSE = true;
-			const THEME = new Pastel();
+			const VERBOSE = false;
+			//const THEME = new Pastel();
+			const THEME = new Duststorm();
 
 			// Random, extremely needed, constants
 			const scene = new THREE.Scene();
@@ -111,11 +112,13 @@
 
 				//for(var i = 0; i < spongeArr.length; i++) rotateShape(spongeArr[i]);
 				//updateShaderTimeUniform();
+
 				//shaderMaterial.uniforms.u_time.value = (new Date().getMilliseconds())/10;
 				shaderMaterial.uniforms.u_time.value += .1;
 				shaderMaterial.uniforms.u_viewDirection.value = camera.directionVector;
 				shaderMaterial.uniforms.u_lightDirection.value = light.directionVector;
 
+				// Skybox Shader code
 				// Direciton of angle is important to keep the sun shader in place...
 				if(camera.directionVector.x < 0)
 				{
@@ -166,8 +169,8 @@
 			}
 			function angle(v1, v2)
 			{
-				console.log(v1);
-				console.log(v2);
+				log(v1);
+				log(v2);
 				return Math.acos(v1.dot(v2)/(v1.length()*v2.length()));
 			}
 			function getPerpVector(vec)
@@ -330,7 +333,7 @@
 						
 					}
 
-					console.log(camera.position);
+					log(camera.position);
 
 				});
 			}
@@ -500,6 +503,31 @@
 				return arr;
 			}
 
+			function initializeKleinianColumn(x,y,z,r,desiredLevels, arr = [], branch = "center")
+			{
+				if(desiredLevels == 0) return arr;
+
+				var geometry = new THREE.SphereGeometry(r,32,16);
+				var currentSphere = new THREE.Mesh(geometry, material);
+				var rFactor = .4, newRadius = rFactor * r ,newCenterDistance = newRadius + r;
+				currentSphere.position.x = x;	
+				currentSphere.position.y = y;
+				currentSphere.position.z = z;
+
+				scene.add(currentSphere);
+
+				arr.push(currentSphere);
+				if(branch != "left") arr = initializeSphereflake(x+newCenterDistance,y,z,newRadius, desiredLevels-1,arr, "right");
+				if(branch != "right") arr = initializeSphereflake(x-newCenterDistance,y,z,newRadius, desiredLevels-1,arr, "left");
+				if(branch != "down") arr = initializeSphereflake(x,y+newCenterDistance,z,newRadius, desiredLevels-1,arr, "up");
+				if(branch != "up") arr = initializeSphereflake(x,y-newCenterDistance,z,newRadius, desiredLevels-1,arr, "down");
+				if(branch != "back") arr = initializeSphereflake(x,y,z+newCenterDistance,newRadius, desiredLevels-1,arr, "front");
+				if(branch != "front") arr = initializeSphereflake(x,y,z-newCenterDistance,newRadius, desiredLevels-1,arr, "back");
+			
+				return arr;
+			}
+
+
 			function isInM0(i,j,k,n)
 			{
 				// Skewer the xy, xz, yz plane to test if in M_0
@@ -508,7 +536,7 @@
 				var holeLength, outerSquareLength;
 
 				if(i == 9 && j == 9)
-					console.log("hit");
+					log("hit");
 
 				for(var level = 0; level < n; level++)
 				{
@@ -562,11 +590,11 @@
 							// Check if current iteration is an empty cube or not
 							if(isInM0(i,j,k,n)) continue;
 
-							//currentCube = new THREE.Mesh(geometry, material);
-							currentCube = new THREE.Mesh(geometry, shaderMaterial);
+							currentCube = new THREE.Mesh(geometry, material);
+							//currentCube = new THREE.Mesh(geometry, shaderMaterial);
 							currentCube.position.set(x,y,z);
 							
-							console.log(currentCube.position);
+							log(currentCube.position);
 							scene.add(currentCube);
 							arr.push(currentCube);
 						}
@@ -593,6 +621,11 @@
 				var spongeArr = mengerSponge(-10,-10,-10,3);
 				//var sphereFlake = initializeSphereflake(0,0,0,3,4);
 			}
+
+			function pseudoKleinianScene()
+			{
+				initializeKleinianColumn(-30,10,10,5,5);
+			}
 		
 		
 
@@ -606,6 +639,7 @@
 			//var shapeMatrix = initializeShapeMatrix(10);
 			sphereScene();
 			spongeScene();
+			pseudoKleinianScene();
 
 			animate();
 		});

@@ -32,7 +32,7 @@ class Galaxy
 {
 	constructor()
 	{
-		this.BACKGROUND = 0xAD836A;
+		this.BACKGROUND = 0x08080f;
 
 		this.FOG = 0x9E7154;
 

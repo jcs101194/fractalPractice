@@ -504,28 +504,173 @@
 				return arr;
 			}
 
-			function initializeKleinianColumn(x,y,z,r,desiredLevels, arr = [], branch = "center")
+			class vec2
 			{
-				if(desiredLevels == 0) return arr;
+				constructor(x,y)
+				{
+					this.x = x;
+					this.y = y;
+				}
+			}
 
+			function complexSquareRoot(a, b)
+			{
+				// Second elment is the number next to the i
+				return new vec2(1.0/sqrt(2.0)*sqrt(a+sqrt(pow(a,2.0)+pow(b,2.0))), 1.0/sqrt(2.0)*sqrt(sqrt(pow(a,2.0)+pow(b,2.0))-a));
+			}
+
+			function sqrt(a)
+			{
+				return Math.sqrt(a);
+			}
+
+			function pow(a,b)
+			{
+				return Math.pow(a,b);
+			}
+
+			/**
+				c4 doesn't need to have center initialized
+			*/
+
+			function getZ(c1, c2, c3, c4, arr)
+			{
+				var k1 = 1.0/c1.r, k2 = 1.0/c2.r, k3 = 1.0/c3.r, k4 = 1.0/c4.r;
+				var x1 = c1.position.x, x2 = c2.position.x, x3 = c3.position.x;
+				var y1 = c1.position.y, y2 = c2.position.y, y3 = c3.position.y;
+				var discrmnt = complexSquareRoot(k1*k2*(x1*x2-y1*y2)+k2*k3*(x2*x3-y2*y3)+k1*k3*(x1*x3-y1*y3),
+								  k1*k2*(x1*y2+x2*y1)+k2*k3*(x2*y3+x3*y2)+k1*k3*(x1*y3+x3*y1));
+
+				arr[0] = [(x1*k1+x2*k2+x3*k3-2.0*discrmnt.x)/k4, (y1*k1+y2*k2+y3*k3-2.0*discrmnt.y)/k4];
+				arr[1] = [(x1*k1+x2*k2+x3*k3-2.0*discrmnt.x)/k4, (y1*k1+y2*k2+y3*k3+2.0*discrmnt.y)/k4];
+				arr[2] = [(x1*k1+x2*k2+x3*k3+2.0*discrmnt.x)/k4, (y1*k1+y2*k2+y3*k3-2.0*discrmnt.y)/k4];
+				arr[3] = [(x1*k1+x2*k2+x3*k3+2.0*discrmnt.x)/k4, (y1*k1+y2*k2+y3*k3+2.0*discrmnt.y)/k4];
+			}
+
+			function testZ(c1, c2, c3, c4)
+			{
+				var k1 = 1.0/c1.r, k2 = 1.0/c2.r, k3 = 1.0/c3.r, k4 = 1.0/c4.r;
+				var x1 = c1.position.x, x2 = c2.position.x, x3 = c3.position.x, x4 = c4.position.x;
+				var y1 = c1.position.y, y2 = c2.position.y, y3 = c3.position.y, y4 = c4.position.y;
+				var precision = 5;
+
+				// z = x + iy
+				var leftEquation  = new vec2(2.0*k1*k2*(x1*x2-y1*y2)+2.0*k1*k3*(x1*x3-y1*y3)+2.0*k1*k4*(x1*x4-y1*y4)+2.0*k2*k3*(x2*x3-y2*y3)+2.0*k2*k4*(x2*x4-y2*y4)+2.0*k3*k4*(x3*x4-y3*y4),
+							  2.0*k1*k2*(x1*y2+x2*y1)+2.0*k1*k3*(x1*y3+x3*y1)+2.0*k1*k4*(x1*y4+x4*y1)+2.0*k2*k3*(x2*y3+x3*y2)+2.0*k2*k4*(x2*y4+x4*y2)+2.0*k3*k4*(x3*y4+x4*y3));
+				var rightEquation = new vec2(k1*k1*(x1*x1-y1*y1)+k2*k2*(x2*x2-y2*y2)+k3*k3*(x3*x3-y3*y3)+k4*k4*(x4*x4-y4*y4),
+							  2.0*k1*k1*x1*y1+2.0*k2*k2*x2*y2+2.0*k3*k3*x3*y3+2.0*k4*k4*x4*y4);
+
+				leftEquation.x = leftEquation.x.toFixed(precision);	rightEquation.x = rightEquation.x.toFixed(precision);
+				leftEquation.y = leftEquation.y.toFixed(precision);	rightEquation.y = rightEquation.y.toFixed(precision);
+
+				return (leftEquation.x == rightEquation.x && leftEquation.y == rightEquation.y);
+			}
+
+			function getK(c1, c2, c3)
+			{
+				var k1 = 1.0/c1.r, k2 = 1.0/c2.r, k3 = 1.0/c3.r;
+
+				return k1+k2+k3+2.0*sqrt(k1*k2+k2*k3+k3*k1);
+			}
+
+			function kleinianColumn(c1, c2, c3, desiredLevels)
+			{
+				if(desiredLevels <= 0) return;
+
+				var k4 = getK(c1, c2, c3);
+				var r = 1/k4;
+				if (r < .05)
+				{
+					return;
+				}
 				var geometry = new THREE.SphereGeometry(r,32,16);
-				var currentSphere = new THREE.Mesh(geometry, material);
-				var rFactor = .4, newRadius = rFactor * r ,newCenterDistance = newRadius + r;
-				currentSphere.position.x = x;	
-				currentSphere.position.y = y;
-				currentSphere.position.z = z;
+				var c4 = new THREE.Mesh(geometry, material);
+				var c5 = new THREE.Mesh(geometry, material);
+				var zArr = [];
+				var zsFound = 0;
 
-				scene.add(currentSphere);
-
-				arr.push(currentSphere);
-				if(branch != "left") arr = initializeSphereflake(x+newCenterDistance,y,z,newRadius, desiredLevels-1,arr, "right");
-				if(branch != "right") arr = initializeSphereflake(x-newCenterDistance,y,z,newRadius, desiredLevels-1,arr, "left");
-				if(branch != "down") arr = initializeSphereflake(x,y+newCenterDistance,z,newRadius, desiredLevels-1,arr, "up");
-				if(branch != "up") arr = initializeSphereflake(x,y-newCenterDistance,z,newRadius, desiredLevels-1,arr, "down");
-				if(branch != "back") arr = initializeSphereflake(x,y,z+newCenterDistance,newRadius, desiredLevels-1,arr, "front");
-				if(branch != "front") arr = initializeSphereflake(x,y,z-newCenterDistance,newRadius, desiredLevels-1,arr, "back");
+				// c4 needs to be initalized before the getZ function
+				c4.r = geometry.parameters.radius;
+				c5.r = geometry.parameters.radius;
 			
-				return arr;
+				getZ(c1, c2, c3, c4, zArr);
+
+				for (var z of zArr)
+				{
+					if (isNaN(z[0]) || isNaN(z[1]))
+					{
+						return;
+					}
+
+					// Recursion is entered in this if blocks because there should never be
+					// more than 1 z after the first iteration
+					if (zsFound == 0)
+					{
+						c4.position.x = z[0];
+						c4.position.y = z[1];
+						c4.position.z = c3.position.z;
+
+						if (testZ(c1, c2, c3, c4))
+						{
+							console.log(z);
+							zsFound++;
+
+							if (desiredLevels % 2 == 1)
+								scene.add(c4);
+
+							kleinianColumn(c1, c2, c4, desiredLevels-1);
+							kleinianColumn(c1, c3, c4, desiredLevels-1);
+						}
+					}
+					else
+					{
+						c5.position.x = z[0];
+						c5.position.y = z[1];
+						c5.position.z = c3.position.z;
+
+						if (testZ(c1, c2, c3, c5))
+						{
+							console.log(z);
+							zsFound++;
+
+							if (desiredLevels % 2 == 1)
+								scene.add(c5);
+
+							kleinianColumn(c1, c2, c5, desiredLevels-1);
+							kleinianColumn(c1, c3, c5, desiredLevels-1);
+						}
+					}
+				}
+				zsFound = 0;
+			}
+
+			function initializeKleinianColumn(x,y,z,r,desiredLevels, arr = [])
+			{
+				var c1 = new THREE.Mesh(new THREE.SphereGeometry(r,32,16), material);
+				var c2 = new THREE.Mesh(new THREE.SphereGeometry(r/2,32,16), material);
+				var c3 = new THREE.Mesh(new THREE.SphereGeometry(r/2,32,16), material);
+
+				// It takes 3 circles to start the column
+				c1.position.x = x;
+				c1.position.y = y;
+				c1.position.z = z;
+				c1.r = -c1.geometry.parameters.radius;	// Make it negative as it's the parent circle
+
+				c2.position.x = x;
+				c2.position.y = y-r/2;
+				c2.position.z = z;
+				c2.r = c2.geometry.parameters.radius;
+
+				c3.position.x = x;
+				c3.position.y = y+r/2;
+				c3.position.z = z;
+				c3.r = c3.geometry.parameters.radius;
+
+				scene.add(c2);
+				scene.add(c3);
+
+				// Iterate recursively
+				kleinianColumn(c1, c2, c3, desiredLevels);
 			}
 
 
@@ -625,7 +770,7 @@
 
 			function pseudoKleinianScene()
 			{
-				initializeKleinianColumn(-30,10,10,5,5);
+				initializeKleinianColumn(20,20,-40,10,6);
 			}
 		
 		

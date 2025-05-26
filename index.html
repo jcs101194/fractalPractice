@@ -27,7 +27,8 @@
 			const CAMERA_TYPE = "regular";
 			const VERBOSE = false;
 			//const THEME = new Pastel();
-			const THEME = new Duststorm();
+			//const THEME = new Duststorm();
+			const THEME = new LEMON_PASTEL();
 			//const THEME = new Galaxy();
 
 			// Random, extremely needed, constants
@@ -43,11 +44,10 @@
 			var shaderMaterial;
 			var skyBoxShader;
 			const cube = new THREE.Mesh( geometry, material );
-			const light = new THREE.DirectionalLight(THEME.COLOR_3, 1);
-			const fog = new THREE.FogExp2(THEME.FOG, .05);
+			const fog = new THREE.FogExp2(THEME.FOG, THEME.FOG_LEVEL);
 			var lights = [];
 			
-			lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
+			lights[0] = new THREE.DirectionalLight( THEME.COLOR_0, 1 );
 			lights[0].position.set( 0, 0, 10 );
 			lights[1] = new THREE.DirectionalLight( THEME.COLOR_1,1);
 			lights[1].position.set( 0.75, 1, 0.5 );
@@ -59,21 +59,9 @@
 			// Constant strings and numerals will have capital snake casing
 			const DRAG_THRESHOLD = 6;		// The higher the threshold the less the drag
 
-			light.position.set(0,0,5);
-			light.position.set(-1,11,28);
-			light.target.position.set(0, 0, 0);
-			light.target.position.set(-1, 11, 21);
-			light.directionVector = new THREE.Vector3(light.target.position.x-light.position.x,
-				light.target.position.y-light.position.y,
-				light.target.position.z-light.position.z
-			);
-
-
 			// Scene code
 			//scene.add(cube);			// I have the cube there as a hello world to see if program is working
-			scene.add(light);
-			scene.add(light.target);
-			//scene.add(lights[0]);
+			scene.add(lights[0]);
 			scene.add(lights[1]);
 			scene.add(lights[2]);
 			//scene.add(lights[3]);
@@ -117,7 +105,7 @@
 				//shaderMaterial.uniforms.u_time.value = (new Date().getMilliseconds())/10;
 				shaderMaterial.uniforms.u_time.value += .1;
 				shaderMaterial.uniforms.u_viewDirection.value = camera.directionVector;
-				shaderMaterial.uniforms.u_lightDirection.value = light.directionVector;
+				shaderMaterial.uniforms.u_lightDirection.value = lights[0].directionVector;
 
 				// Skybox Shader code
 				// Direciton of angle is important to keep the sun shader in place...
@@ -248,7 +236,7 @@
 					u_fogNear:   	{type: "float", value: 1.0 },
 					u_fogFar:    	{type: "float", value: 200.0 },
 					u_viewDirection:    	{type: "vec3", value: camera.directionVector },
-					u_lightDirection:    	{type: "vec3", value: light.directionVector }
+					u_lightDirection:    	{type: "vec3", value: lights[0].directionVector }
 				};
 				shaderMaterial = new THREE.ShaderMaterial
 				({	
@@ -785,7 +773,7 @@
 			//var shapeMatrix = initializeShapeMatrix(10);
 			sphereScene();
 			spongeScene();
-			pseudoKleinianScene();
+			//pseudoKleinianScene();
 
 			animate();
 		});

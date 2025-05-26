@@ -148,4 +148,40 @@ void main()
 }
 
 </script>
+<script id="skyBoxShader1" type="x-shader/x-vertex">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform float time;
+uniform vec2 resolution;
+
+vec2 complexMul(vec2 a, vec2 b) {
+    return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+float fractal(vec2 z) {
+    const int iterations = 20;
+    float d = 1.0;
+    for (int i = 0; i < iterations; i++) {
+        z = complexMul(z, z);  // Squaring the complex number
+        z += vec2(0.7885 * cos(time * 0.1), 0.7885 * sin(time * 0.1));  // Perturbation
+        d = min(d, length(z));
+    }
+    return d;
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = (fragCoord.xy / resolution.xy) * 2.0 - 1.0;
+    uv.x *= resolution.x / resolution.y;
+
+    vec2 c = uv * 0.8;
+    float col = fractal(c);
+    fragColor = vec4(vec3(1.0 - col * 2.0, 0.5 + col * 0.3, 0.8 - col * 1.5), 1.0);
+}
+
+void main() {
+    mainImage(gl_FragColor, gl_FragCoord.xy);
+}
+</script>
 </html>
